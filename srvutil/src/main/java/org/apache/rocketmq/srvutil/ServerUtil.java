@@ -26,6 +26,11 @@ import org.apache.commons.cli.ParseException;
 
 public class ServerUtil {
 
+    /**
+     * 定义 -h 和 -n 两个参数
+     * @param options
+     * @return
+     */
     public static Options buildCommandlineOptions(final Options options) {
         Option opt = new Option("h", "help", false, "Print help");
         opt.setRequired(false);
@@ -47,6 +52,9 @@ public class ServerUtil {
         CommandLine commandLine = null;
         try {
             commandLine = parser.parse(options, args);
+            /**
+             * 如果包含 -h 参数，直接打印帮助项
+             */
             if (commandLine.hasOption('h')) {
                 hf.printHelp(appName, options, true);
                 return null;

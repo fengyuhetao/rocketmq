@@ -1,19 +1,3 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.apache.rocketmq.common;
 
 import java.io.ByteArrayInputStream;
@@ -237,10 +221,26 @@ public class MixAll {
         printObjectProperties(logger, object, false);
     }
 
+    // k=v 的格式打印配置类的所有属性，onlyImportantField表示是否仅仅打印有@ImportantField注解的属性
     public static void printObjectProperties(final InternalLogger logger, final Object object,
         final boolean onlyImportantField) {
         Field[] fields = object.getClass().getDeclaredFields();
         for (Field field : fields) {
+            /**
+             * 返回int类型值表示该字段的修饰符
+             * PUBLIC: 1
+             * PRIVATE: 2
+             * PROTECTED: 4
+             * STATIC: 8
+             * FINAL: 16
+             * SYNCHRONIZED: 32
+             * VOLATILE: 64
+             * TRANSIENT: 128
+             * NATIVE: 256
+             * INTERFACE: 512
+             * ABSTRACT: 1024
+             * STRICT: 2048
+             */
             if (!Modifier.isStatic(field.getModifiers())) {
                 String name = field.getName();
                 if (!name.startsWith("this")) {
@@ -329,11 +329,13 @@ public class MixAll {
                     String tmp = mn.substring(4);
                     String first = mn.substring(3, 4);
 
+                    // 拿到变量名称
                     String key = first.toLowerCase() + tmp;
                     String property = p.getProperty(key);
                     if (property != null) {
                         Class<?>[] pt = method.getParameterTypes();
                         if (pt != null && pt.length > 0) {
+//                            拿到变量的类型，这种方法一般只有一个参数，所以只要pt[0] 即可，将属性注入进去
                             String cn = pt[0].getSimpleName();
                             Object arg = null;
                             if (cn.equals("int") || cn.equals("Integer")) {

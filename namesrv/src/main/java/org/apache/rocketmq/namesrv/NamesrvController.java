@@ -42,12 +42,20 @@ import org.apache.rocketmq.srvutil.FileWatchService;
 public class NamesrvController {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
+    /**
+     * 路由中心配置
+     */
     private final NamesrvConfig namesrvConfig;
 
+    /**
+     * netty相关配置
+     */
     private final NettyServerConfig nettyServerConfig;
 
+//    单线程调度器
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
         "NSScheduledThread"));
+
     private final KVConfigManager kvConfigManager;
     private final RouteInfoManager routeInfoManager;
 
@@ -74,16 +82,19 @@ public class NamesrvController {
     }
 
     public boolean initialize() {
-
+        // 加载k-v配置
         this.kvConfigManager.load();
 
+//        创建netty网络服务对象
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
 
+//        创建固定数量线程的线程池
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
 
         this.registerProcessor();
 
+//        创建定时任务，每10秒扫描一次broker，并定时剔除不活跃的broker
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -92,6 +103,7 @@ public class NamesrvController {
             }
         }, 5, 10, TimeUnit.SECONDS);
 
+//        创建一个定时任务，每隔10分钟，打印一次kv变量
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -153,6 +165,7 @@ public class NamesrvController {
     }
 
     public void start() throws Exception {
+        // 启动netty
         this.remotingServer.start();
 
         if (this.fileWatchService != null) {
@@ -161,8 +174,12 @@ public class NamesrvController {
     }
 
     public void shutdown() {
+        // 关闭netty服务
         this.remotingServer.shutdown();
+
         this.remotingExecutor.shutdown();
+
+//        关闭定时调度器
         this.scheduledExecutorService.shutdown();
 
         if (this.fileWatchService != null) {
