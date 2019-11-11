@@ -38,10 +38,10 @@ public class NamesrvStartup {
     public static NamesrvController main0(String[] args) {
 
         try {
-//            创建核心控制器
+            // 创建核心控制器
             NamesrvController controller = createNamesrvController(args);
 
-//            启动路由中心
+            // 启动路由中心
             start(controller);
             String tip = "The Name Server boot success. serializeType=" + RemotingCommand.getSerializeTypeConfigInThisServer();
             log.info(tip);
@@ -61,7 +61,8 @@ public class NamesrvStartup {
         //PackageConflictDetect.detectFastjson();
 
         Options options = ServerUtil.buildCommandlineOptions(new Options());
-        /* 根据Options和运行时参数args生成命令行对象 */
+
+        // 根据Options和运行时参数args生成命令行对象
         commandLine = ServerUtil.parseCmdLine("mqnamesrv", args, buildCommandlineOptions(options), new PosixParser());
         if (null == commandLine) {
             System.exit(-1);
@@ -95,7 +96,7 @@ public class NamesrvStartup {
             }
         }
 
-        // 如果指定了p参数，name打印所有配置，然后退出
+        // 如果指定了p参数，打印所有配置，然后退出
         if (commandLine.hasOption('p')) {
             InternalLogger console = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_CONSOLE_NAME);
             MixAll.printObjectProperties(console, namesrvConfig);
@@ -106,7 +107,7 @@ public class NamesrvStartup {
         // 使用命令行中的参数覆盖文件中配置的参数
         MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), namesrvConfig);
 
-//        如果没有指定ROCKETMQ_HOME，直接退出
+        // 如果没有指定ROCKETMQ_HOME，直接退出
         if (null == namesrvConfig.getRocketmqHome()) {
             System.out.printf("Please set the %s variable in your environment to match the location of the RocketMQ installation%n", MixAll.ROCKETMQ_HOME_ENV);
             System.exit(-2);
@@ -117,7 +118,7 @@ public class NamesrvStartup {
         configurator.setContext(lc);
         lc.reset();
 
-//        加载日志配置文件
+        // 加载日志配置文件
         configurator.doConfigure(namesrvConfig.getRocketmqHome() + "/conf/logback_namesrv.xml");
 
         log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
@@ -141,6 +142,7 @@ public class NamesrvStartup {
             throw new IllegalArgumentException("NamesrvController is null");
         }
 
+        // 初始化
         boolean initResult = controller.initialize();
         if (!initResult) {
             controller.shutdown();
@@ -153,7 +155,7 @@ public class NamesrvStartup {
         Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(log, new Callable<Void>() {
             @Override
             public Void call() throws Exception {
-                shutdown(controller);
+                controller.shutdown();
                 return null;
             }
         }));
@@ -163,12 +165,9 @@ public class NamesrvStartup {
         return controller;
     }
 
-    public static void shutdown(final NamesrvController controller) {
-        controller.shutdown();
-    }
-
     /**
      * 定义 -c 和 -p 参数
+     *
      * @param options
      * @return
      */

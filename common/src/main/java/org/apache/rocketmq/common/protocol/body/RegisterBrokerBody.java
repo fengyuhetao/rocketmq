@@ -44,6 +44,11 @@ public class RegisterBrokerBody extends RemotingSerializable {
     private TopicConfigSerializeWrapper topicConfigSerializeWrapper = new TopicConfigSerializeWrapper();
     private List<String> filterServerList = new ArrayList<String>();
 
+    /**
+     * 编码
+     * @param compress 是否压缩
+     * @return
+     */
     public byte[] encode(boolean compress) {
 
         if (!compress) {

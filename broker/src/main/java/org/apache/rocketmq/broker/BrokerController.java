@@ -109,8 +109,14 @@ public class BrokerController {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private static final InternalLogger LOG_PROTECTION = InternalLoggerFactory.getLogger(LoggerName.PROTECTION_LOGGER_NAME);
     private static final InternalLogger LOG_WATER_MARK = InternalLoggerFactory.getLogger(LoggerName.WATER_MARK_LOGGER_NAME);
+
+    // Broker配置
     private final BrokerConfig brokerConfig;
+
+    // netty服务端配置
     private final NettyServerConfig nettyServerConfig;
+
+    // netty客户端配置
     private final NettyClientConfig nettyClientConfig;
     private final MessageStoreConfig messageStoreConfig;
     private final ConsumerOffsetManager consumerOffsetManager;
@@ -909,13 +915,13 @@ public class BrokerController {
      * 向所有broker发送心跳包
      * @param checkOrderConfig
      * @param oneway
-     * @param forceRegister
+     * @param forceRegister 基本传入的都是true
      */
     public synchronized void registerBrokerAll(final boolean checkOrderConfig, boolean oneway, boolean forceRegister) {
-//        创建一个topic包装类
+        // 创建一个topic包装类
         TopicConfigSerializeWrapper topicConfigWrapper = this.getTopicConfigManager().buildTopicConfigSerializeWrapper();
 
-        // 这里比较有趣，如果该broker没有读写权限，那么会新建一个临时的topicConfigTable，再set进包装类
+        // 这里比较有趣，如果该broker没有读或者写权限，那么会新建一个临时的topicConfigTable，再set进包装类
         if (!PermName.isWriteable(this.getBrokerConfig().getBrokerPermission())
             || !PermName.isReadable(this.getBrokerConfig().getBrokerPermission())) {
             ConcurrentHashMap<String, TopicConfig> topicConfigTable = new ConcurrentHashMap<String, TopicConfig>();
@@ -938,6 +944,12 @@ public class BrokerController {
         }
     }
 
+    /**
+     * 注册
+     * @param checkOrderConfig
+     * @param oneway
+     * @param topicConfigWrapper
+     */
     private void doRegisterBrokerAll(boolean checkOrderConfig, boolean oneway,
         TopicConfigSerializeWrapper topicConfigWrapper) {
         List<RegisterBrokerResult> registerBrokerResultList = this.brokerOuterAPI.registerBrokerAll(
@@ -974,7 +986,7 @@ public class BrokerController {
         final long brokerId,
         final int timeoutMills) {
 
-//        创建一个TopicConfig的包装类
+        // 创建一个TopicConfig的包装类
         TopicConfigSerializeWrapper topicConfigWrapper = this.getTopicConfigManager().buildTopicConfigSerializeWrapper();
         List<Boolean> changeList = brokerOuterAPI.needRegister(clusterName, brokerAddr, brokerName, brokerId, topicConfigWrapper, timeoutMills);
         boolean needRegister = false;

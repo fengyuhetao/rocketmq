@@ -52,7 +52,7 @@ public class NamesrvController {
      */
     private final NettyServerConfig nettyServerConfig;
 
-//    单线程调度器
+    // 单线程调度器
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl(
         "NSScheduledThread"));
 
@@ -85,16 +85,17 @@ public class NamesrvController {
         // 加载k-v配置
         this.kvConfigManager.load();
 
-//        创建netty网络服务对象
+        // TODO 创建netty网络服务对象
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
 
-//        创建固定数量线程的线程池
+        // 创建固定数量线程的线程池
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
 
+        // 注册数据包处理器
         this.registerProcessor();
 
-//        创建定时任务，每10秒扫描一次broker，并定时剔除不活跃的broker
+        // 创建定时任务，每10秒扫描一次broker，并定时剔除不活跃的broker
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -103,7 +104,7 @@ public class NamesrvController {
             }
         }, 5, 10, TimeUnit.SECONDS);
 
-//        创建一个定时任务，每隔10分钟，打印一次kv变量
+        // 创建一个定时任务，每隔10分钟，打印一次kv变量
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override

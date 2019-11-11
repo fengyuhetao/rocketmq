@@ -24,13 +24,13 @@ import java.util.Random;
 import org.apache.rocketmq.common.MixAll;
 
 public class BrokerData implements Comparable<BrokerData> {
-//    所在集群
+    // 所在集群
     private String cluster;
 
-//    broker名称
+    // broker名称
     private String brokerName;
 
-//    主备节点信息，brokerId=0 master, >0 slave
+    // 主备节点信息，brokerId=0 master, >0 slave
     private HashMap<Long/* brokerId */, String/* broker address */> brokerAddrs;
 
     private final Random random = new Random();

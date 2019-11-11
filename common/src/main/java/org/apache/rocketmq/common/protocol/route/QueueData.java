@@ -20,20 +20,25 @@
  */
 package org.apache.rocketmq.common.protocol.route;
 
+import org.apache.rocketmq.common.constant.PermName;
+
 public class QueueData implements Comparable<QueueData> {
-//    broker名称
+    // broker名称
     private String brokerName;
 
-//    读队列数量
+    // 写队列数量
     private int readQueueNums;
 
-//    写队列数量
+    // 读队列数量
     private int writeQueueNums;
 
-
+    /**
+     * 权限
+     * @see PermName
+     */
     private int perm;
 
-//    同步标记
+    // 同步标记
     private int topicSynFlag;
 
     public int getReadQueueNums() {

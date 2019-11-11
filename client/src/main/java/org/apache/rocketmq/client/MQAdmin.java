@@ -48,6 +48,7 @@ public interface MQAdmin {
         throws MQClientException;
 
     /**
+     * 根据时间戳从队列中查询偏移量
      * Gets the message queue offset according to some time in milliseconds<br>
      * be cautious to call because of more IO overhead
      *
@@ -58,6 +59,7 @@ public interface MQAdmin {
     long searchOffset(final MessageQueue mq, final long timestamp) throws MQClientException;
 
     /**
+     * 查询消息队列中最大物理偏移量
      * Gets the max offset
      *
      * @param mq Instance of MessageQueue
@@ -66,6 +68,7 @@ public interface MQAdmin {
     long maxOffset(final MessageQueue mq) throws MQClientException;
 
     /**
+     * 查找该消息队列中最小物理偏移量
      * Gets the minimum offset
      *
      * @param mq Instance of MessageQueue

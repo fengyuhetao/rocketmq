@@ -12,6 +12,8 @@
  */
 package org.apache.rocketmq.common.utils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.rocketmq.common.MixAll;

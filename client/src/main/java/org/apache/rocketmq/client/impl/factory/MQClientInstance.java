@@ -223,6 +223,7 @@ public class MQClientInstance {
         return mqList;
     }
 
+    // 启动MQClientInstance
     public void start() throws MQClientException {
 
         synchronized (this) {
@@ -611,6 +612,7 @@ public class MQClientInstance {
     public boolean updateTopicRouteInfoFromNameServer(final String topic, boolean isDefault,
         DefaultMQProducer defaultMQProducer) {
         try {
+            // 查询NameServer加锁
             if (this.lockNamesrv.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
                     TopicRouteData topicRouteData;
@@ -625,6 +627,7 @@ public class MQClientInstance {
                             }
                         }
                     } else {
+                        // 从NameServer中获取topic路由信息
                         topicRouteData = this.mQClientAPIImpl.getTopicRouteInfoFromNameServer(topic, 1000 * 3);
                     }
                     if (topicRouteData != null) {

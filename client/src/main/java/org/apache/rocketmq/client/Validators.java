@@ -75,6 +75,7 @@ public class Validators {
     }
 
     /**
+     * 校验消息
      * Validate message
      */
     public static void checkMessage(Message msg, DefaultMQProducer defaultMQProducer)

@@ -38,7 +38,7 @@ public class MixAll {
     public static final String MESSAGE_COMPRESS_LEVEL = "rocketmq.message.compressLevel";
     public static final String DEFAULT_NAMESRV_ADDR_LOOKUP = "jmenv.tbsite.net";
     public static final String WS_DOMAIN_NAME = System.getProperty("rocketmq.namesrv.domain", DEFAULT_NAMESRV_ADDR_LOOKUP);
-    public static final String WS_DOMAIN_SUBGROUP = System.getProperty("rocketmq.namesrv.domain.subgroup", "nsaddr");
+    public static final String WS_DOMAIN_SUBGROUP = System.getProperty("rockextmq.namesrv.domain.subgroup", "nsaddr");
     //http://jmenv.tbsite.net:8080/rocketmq/nsaddr
     //public static final String WS_ADDR = "http://" + WS_DOMAIN_NAME + ":8080/rocketmq/" + WS_DOMAIN_SUBGROUP;
     public static final String AUTO_CREATE_TOPIC_KEY_TOPIC = "TBW102"; // Will be created at broker when isAutoCreateTopicEnable
@@ -329,13 +329,13 @@ public class MixAll {
                     String tmp = mn.substring(4);
                     String first = mn.substring(3, 4);
 
-                    // 拿到变量名称
+                    // 拿到变量驼峰格式名称
                     String key = first.toLowerCase() + tmp;
                     String property = p.getProperty(key);
                     if (property != null) {
                         Class<?>[] pt = method.getParameterTypes();
                         if (pt != null && pt.length > 0) {
-//                            拿到变量的类型，这种方法一般只有一个参数，所以只要pt[0] 即可，将属性注入进去
+                            // 拿到变量的类型，这种方法一般只有一个参数，所以只要pt[0] 即可，将属性注入进去
                             String cn = pt[0].getSimpleName();
                             Object arg = null;
                             if (cn.equals("int") || cn.equals("Integer")) {
