@@ -381,6 +381,7 @@ public class MessageDecoder {
         return msgExts;
     }
 
+    // 将属性转化为字符串
     public static String messageProperties2String(Map<String, String> properties) {
         StringBuilder sb = new StringBuilder();
         if (properties != null) {

@@ -43,6 +43,7 @@ public class TopicPublishInfo {
 
     /**
      * messageQueueList是否为空
+     *
      * @return
      */
     public boolean ok() {
@@ -73,6 +74,12 @@ public class TopicPublishInfo {
         this.haveTopicRouterInfo = haveTopicRouterInfo;
     }
 
+    /**
+     * 未启用Broker故障延迟机制
+     *
+     * @param lastBrokerName
+     * @return
+     */
     public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
         if (lastBrokerName == null) {
             return selectOneMessageQueue();

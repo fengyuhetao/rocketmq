@@ -87,7 +87,8 @@ public abstract class NettyRemotingAbstract {
     protected final NettyEventExecutor nettyEventExecutor = new NettyEventExecutor();
 
     /**
-     * The default request processor to use in case there is no exact match in {@link #processorTable} per request code.
+     * The default request processor to use in case there is no exact match in {@link #processorTable} per request
+     * code.
      */
     protected Pair<NettyRequestProcessor, ExecutorService> defaultRequestProcessor;
 
@@ -100,8 +101,6 @@ public abstract class NettyRemotingAbstract {
      * custom rpc hooks
      */
     protected List<RPCHook> rpcHooks = new ArrayList<RPCHook>();
-
-
 
     static {
         NettyLogger.initNettyLogger();
@@ -166,9 +165,15 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    /**
+     * 执行RpcHook
+     *
+     * @param addr
+     * @param request
+     */
     protected void doBeforeRpcHooks(String addr, RemotingCommand request) {
         if (rpcHooks.size() > 0) {
-            for (RPCHook rpcHook: rpcHooks) {
+            for (RPCHook rpcHook : rpcHooks) {
                 rpcHook.doBeforeRequest(addr, request);
             }
         }
@@ -176,12 +181,11 @@ public abstract class NettyRemotingAbstract {
 
     protected void doAfterRpcHooks(String addr, RemotingCommand request, RemotingCommand response) {
         if (rpcHooks.size() > 0) {
-            for (RPCHook rpcHook: rpcHooks) {
+            for (RPCHook rpcHook : rpcHooks) {
                 rpcHook.doAfterResponse(addr, request, response);
             }
         }
     }
-
 
     /**
      * Process incoming request command issued by remote peer.
@@ -333,11 +337,8 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
-
-
     /**
-     * Custom RPC hook.
-     * Just be compatible with the previous version, use getRPCHooks instead.
+     * Custom RPC hook. Just be compatible with the previous version, use getRPCHooks instead.
      */
     @Deprecated
     protected RPCHook getRPCHook() {
@@ -355,7 +356,6 @@ public abstract class NettyRemotingAbstract {
     public List<RPCHook> getRPCHooks() {
         return rpcHooks;
     }
-
 
     /**
      * This method specifies thread pool to use while invoking callback methods.
@@ -394,6 +394,9 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    /**
+     * 真正发出请求
+     */
     public RemotingCommand invokeSyncImpl(final Channel channel, final RemotingCommand request,
         final long timeoutMillis)
         throws InterruptedException, RemotingSendRequestException, RemotingTimeoutException {
@@ -502,6 +505,7 @@ public abstract class NettyRemotingAbstract {
 
     /**
      * mark the request of the specified channel as fail and to invoke fail callback immediately
+     *
      * @param channel the channel which is close already
      */
     protected void failFast(final Channel channel) {

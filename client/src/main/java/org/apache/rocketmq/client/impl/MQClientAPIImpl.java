@@ -284,6 +284,19 @@ public class MQClientAPIImpl {
         throw new MQClientException(response.getCode(), response.getRemark());
     }
 
+    /**
+     * oneway方式发送或者 sync方式
+     *
+     * @param addr
+     * @param brokerName
+     * @param msg
+     * @param requestHeader
+     * @param timeoutMillis
+     * @param communicationMode
+     * @param context
+     * @param producer
+     * @return
+     */
     public SendResult sendMessage(
         final String addr,
         final String brokerName,
@@ -1217,15 +1230,11 @@ public class MQClientAPIImpl {
 
     /**
      * 从NameServer中获取topic路由信息
+     *
      * @param topic
      * @param timeoutMillis
      * @param allowTopicNotExist
      * @return
-     * @throws MQClientException
-     * @throws InterruptedException
-     * @throws RemotingTimeoutException
-     * @throws RemotingSendRequestException
-     * @throws RemotingConnectException
      */
     public TopicRouteData getTopicRouteInfoFromNameServer(final String topic, final long timeoutMillis,
         boolean allowTopicNotExist) throws MQClientException, InterruptedException, RemotingTimeoutException, RemotingSendRequestException, RemotingConnectException {

@@ -17,11 +17,16 @@
 
 package org.apache.rocketmq.client.latency;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.rocketmq.client.impl.producer.TopicPublishInfo;
 import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.message.MessageQueue;
 
+/**
+ * 消息失败策略，故障延迟的门面类
+ */
 public class MQFaultStrategy {
     private final static InternalLogger log = ClientLogger.getLog();
     private final LatencyFaultTolerance<String> latencyFaultTolerance = new LatencyFaultToleranceImpl();
@@ -56,6 +61,13 @@ public class MQFaultStrategy {
         this.sendLatencyFaultEnable = sendLatencyFaultEnable;
     }
 
+    /**
+     * 从topic路由信息中，选取一个消息队列
+     *
+     * @param tpInfo
+     * @param lastBrokerName
+     * @return
+     */
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
         if (this.sendLatencyFaultEnable) {
             // 如果启用Broker故障延迟机制，在Broker宕机期间，如果一次消息发送失败，可以将该Broker暂时排除在消息队列的选择范围中
@@ -69,14 +81,18 @@ public class MQFaultStrategy {
                     MessageQueue mq = tpInfo.getMessageQueueList().get(pos);
                     // 验证Broker是否可用
                     if (latencyFaultTolerance.isAvailable(mq.getBrokerName())) {
+                        // 如果lastBrokerName == null,说明第一次选择，直接返回
+                        // 如果选出来的brokerName和lastBrokerName相同，并且该broker故障规避时间到期，重新尝试选取该broker
                         if (null == lastBrokerName || mq.getBrokerName().equals(lastBrokerName))
                             return mq;
                     }
                 }
 
+                // MessageQueue列表中，没有找到可用的broker,尝试从故障条目中选取一个
                 final String notBestBroker = latencyFaultTolerance.pickOneAtLeast();
                 int writeQueueNums = tpInfo.getQueueIdByBroker(notBestBroker);
                 if (writeQueueNums > 0) {
+                    // TODO 不太理解
                     final MessageQueue mq = tpInfo.selectOneMessageQueue();
                     if (notBestBroker != null) {
                         mq.setBrokerName(notBestBroker);
@@ -90,9 +106,11 @@ public class MQFaultStrategy {
                 log.error("Error occurred when selecting message queue", e);
             }
 
+            // 兜底方案，随机选一个
             return tpInfo.selectOneMessageQueue();
         }
 
+        // 未启用故障延迟机制
         return tpInfo.selectOneMessageQueue(lastBrokerName);
     }
 
@@ -111,4 +129,5 @@ public class MQFaultStrategy {
 
         return 0;
     }
+
 }
