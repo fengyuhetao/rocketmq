@@ -134,6 +134,8 @@ public abstract class NettyRemotingAbstract {
     }
 
     /**
+     * 处理接收到的消息
+     *
      * Entry of incoming command processing.
      *
      * <p>

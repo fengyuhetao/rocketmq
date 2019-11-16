@@ -57,9 +57,10 @@ public class AllocateMappedFileService extends ServiceThread {
             }
         }
 
+        // 将nextFile添加到requestTable中
         AllocateRequest nextReq = new AllocateRequest(nextFilePath, fileSize);
         boolean nextPutOK = this.requestTable.putIfAbsent(nextFilePath, nextReq) == null;
-
+        // 将NextFile添加到requestQueue中
         if (nextPutOK) {
             if (canSubmitRequests <= 0) {
                 log.warn("[NOTIFYME]TransientStorePool is not enough, so create mapped file error, " +
@@ -74,8 +75,10 @@ public class AllocateMappedFileService extends ServiceThread {
             canSubmitRequests--;
         }
 
+        // 将nextNextFile添加到requestTable中
         AllocateRequest nextNextReq = new AllocateRequest(nextNextFilePath, fileSize);
         boolean nextNextPutOK = this.requestTable.putIfAbsent(nextNextFilePath, nextNextReq) == null;
+        // 将nextNextFile添加到requestQueue中
         if (nextNextPutOK) {
             if (canSubmitRequests <= 0) {
                 log.warn("[NOTIFYME]TransientStorePool is not enough, so skip preallocate mapped file, " +
@@ -89,6 +92,7 @@ public class AllocateMappedFileService extends ServiceThread {
             }
         }
 
+        // 这期间服务出现异常，返回null
         if (hasException) {
             log.warn(this.getServiceName() + " service has exception. so return null");
             return null;
@@ -97,11 +101,13 @@ public class AllocateMappedFileService extends ServiceThread {
         AllocateRequest result = this.requestTable.get(nextFilePath);
         try {
             if (result != null) {
+                // 阻塞，等待结果返回
                 boolean waitOK = result.getCountDownLatch().await(waitTimeOut, TimeUnit.MILLISECONDS);
                 if (!waitOK) {
                     log.warn("create mmap timeout " + result.getFilePath() + " " + result.getFileSize());
                     return null;
                 } else {
+                    // 创建成功，删除该记录
                     this.requestTable.remove(nextFilePath);
                     return result.getMappedFile();
                 }
@@ -134,6 +140,7 @@ public class AllocateMappedFileService extends ServiceThread {
     public void run() {
         log.info(this.getServiceName() + " service started");
 
+        // 不间断执行
         while (!this.isStopped() && this.mmapOperation()) {
 
         }
@@ -142,11 +149,13 @@ public class AllocateMappedFileService extends ServiceThread {
 
     /**
      * Only interrupted by the external thread, will return false
+     * 创建mmap映射文件
      */
     private boolean mmapOperation() {
         boolean isSuccess = false;
         AllocateRequest req = null;
         try {
+            // 阻塞获取分配请求
             req = this.requestQueue.take();
             AllocateRequest expectedRequest = this.requestTable.get(req.getFilePath());
             if (null == expectedRequest) {
@@ -154,16 +163,20 @@ public class AllocateMappedFileService extends ServiceThread {
                     + req.getFileSize());
                 return true;
             }
+            // 如果获得的分配请求和预期的不相同，说明出现并发的问题
             if (expectedRequest != req) {
                 log.warn("never expected here,  maybe cause timeout " + req.getFilePath() + " "
                     + req.getFileSize() + ", req:" + req + ", expectedRequest:" + expectedRequest);
                 return true;
             }
 
+            // 如果还没有创建映射文件
             if (req.getMappedFile() == null) {
                 long beginTime = System.currentTimeMillis();
 
                 MappedFile mappedFile;
+                // 判断是否开启 isTransientStorePoolEnable ，如果开启则使用直接内存进行写入数据，
+                // 最后从直接内存中 commit 到 FileChannel 中。
                 if (messageStore.getMessageStoreConfig().isTransientStorePoolEnable()) {
                     try {
                         mappedFile = ServiceLoader.load(MappedFile.class).iterator().next();
@@ -183,6 +196,9 @@ public class AllocateMappedFileService extends ServiceThread {
                         + " " + req.getFilePath() + " " + req.getFileSize());
                 }
 
+                // 判断 mappedFile 大小，只有 CommitLog 才进行文件预热
+                // 预写入数据。按照系统的 pagesize 进行每个pagesize 写入一个字节数据。
+                //为了把mmap 方式映射的文件都加载到内存中。
                 // pre write mappedFile
                 if (mappedFile.getFileSize() >= this.messageStore.getMessageStoreConfig()
                     .getMapedFileSizeCommitLog()

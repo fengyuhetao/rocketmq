@@ -165,6 +165,7 @@ public class DefaultMessageStore implements MessageStore {
             this.transientStorePool.init();
         }
 
+        // 预创建commitLog文件服务
         this.allocateMappedFileService.start();
 
         this.indexService.start();

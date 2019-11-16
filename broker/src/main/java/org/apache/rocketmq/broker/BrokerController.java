@@ -118,6 +118,8 @@ public class BrokerController {
 
     // netty客户端配置
     private final NettyClientConfig nettyClientConfig;
+
+    // 消息存储配置
     private final MessageStoreConfig messageStoreConfig;
     private final ConsumerOffsetManager consumerOffsetManager;
     private final ConsumerManager consumerManager;
@@ -146,6 +148,8 @@ public class BrokerController {
     private final BrokerStatsManager brokerStatsManager;
     private final List<SendMessageHook> sendMessageHookList = new ArrayList<SendMessageHook>();
     private final List<ConsumeMessageHook> consumeMessageHookList = new ArrayList<ConsumeMessageHook>();
+
+    // 消息存储模块核心
     private MessageStore messageStore;
     private RemotingServer remotingServer;
     private RemotingServer fastRemotingServer;

@@ -85,7 +85,7 @@ public class NamesrvController {
         // 加载k-v配置
         this.kvConfigManager.load();
 
-        // TODO 创建netty网络服务对象
+        //创建netty网络服务对象
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
 
         // 创建固定数量线程的线程池

@@ -40,12 +40,22 @@ public abstract class ReferenceResource {
         return this.available;
     }
 
+    /**
+     * 关闭mapedfile
+     *
+     * @param intervalForcibly
+     */
     public void shutdown(final long intervalForcibly) {
+        // 初次调用时，available为true
         if (this.available) {
+            // 设置为false
             this.available = false;
+            // 设置初次关闭时间戳
             this.firstShutdownTimestamp = System.currentTimeMillis();
+            // 尝试释放资源
             this.release();
         } else if (this.getRefCount() > 0) {
+            // 只有引用计数小于1的情况，才会释放，如果大于1，比较当前时间与firstShutdownTimestamp,如果超出最大拒绝存活期，每执行一次，引用计数减少1000，再次尝试释放
             if ((System.currentTimeMillis() - this.firstShutdownTimestamp) >= intervalForcibly) {
                 this.refCount.set(-1000 - this.getRefCount());
                 this.release();
@@ -53,6 +63,9 @@ public abstract class ReferenceResource {
         }
     }
 
+    /**
+     * 只有引用计数小于1的情况，才会释放
+     */
     public void release() {
         long value = this.refCount.decrementAndGet();
         if (value > 0)

@@ -533,7 +533,12 @@ public class CommitLog {
         return beginTimeInLock;
     }
 
-    // 消息写入CommitLog
+    /**
+     * 消息写入CommitLog，该方法仅仅将消息追加到内存中，需要根据是同步刷盘，还是异步刷盘方式，将内存中的数据持久化到磁盘，然后执行HA主从同步复制
+     *
+     * @param msg 单条消息
+     * @return
+     */
     public PutMessageResult putMessage(final MessageExtBrokerInner msg) {
         // Set the storage time
         msg.setStoreTimestamp(System.currentTimeMillis());
@@ -598,13 +603,15 @@ public class CommitLog {
                 return new PutMessageResult(PutMessageStatus.CREATE_MAPEDFILE_FAILED, null);
             }
 
+            // 写入消息
             result = mappedFile.appendMessage(msg, this.appendMessageCallback);
             switch (result.getStatus()) {
                 case PUT_OK:
                     break;
-                case END_OF_FILE:
+                case END_OF_FILE:      // 当前页面没有足够的剩余空间，需要写到新的文件中
                     unlockMappedFile = mappedFile;
                     // Create a new file, re-write the message
+                    // 获取最新的mmap文件
                     mappedFile = this.mappedFileQueue.getLastMappedFile(0);
                     if (null == mappedFile) {
                         // XXX: warn and notify me
@@ -614,11 +621,11 @@ public class CommitLog {
                     }
                     result = mappedFile.appendMessage(msg, this.appendMessageCallback);
                     break;
-                case MESSAGE_SIZE_EXCEEDED:
-                case PROPERTIES_SIZE_EXCEEDED:
+                case MESSAGE_SIZE_EXCEEDED:         // 消息长度超过最大允许长度
+                case PROPERTIES_SIZE_EXCEEDED:           // 消息属性超过最大允许长度
                     beginTimeInLock = 0;
                     return new PutMessageResult(PutMessageStatus.MESSAGE_ILLEGAL, result);
-                case UNKNOWN_ERROR:
+                case UNKNOWN_ERROR:                // 未知异常
                     beginTimeInLock = 0;
                     return new PutMessageResult(PutMessageStatus.UNKNOWN_ERROR, result);
                 default:
@@ -643,17 +650,29 @@ public class CommitLog {
         PutMessageResult putMessageResult = new PutMessageResult(PutMessageStatus.PUT_OK, result);
 
         // Statistics
+        // 设置该主题下写入消息的次数
         storeStatsService.getSinglePutMessageTopicTimesTotal(msg.getTopic()).incrementAndGet();
+
+        // 设置该topic写入消息的大小
         storeStatsService.getSinglePutMessageTopicSizeTotal(topic).addAndGet(result.getWroteBytes());
 
+        // 刷盘
         handleDiskFlush(result, putMessageResult, msg);
+        // 主从同步
         handleHA(result, putMessageResult, msg);
 
         return putMessageResult;
     }
 
+    /**
+     * TODO 没搞懂刷盘
+     * @param result
+     * @param putMessageResult
+     * @param messageExt
+     */
     public void handleDiskFlush(AppendMessageResult result, PutMessageResult putMessageResult, MessageExt messageExt) {
         // Synchronization flush
+        // 如果是同步刷盘
         if (FlushDiskType.SYNC_FLUSH == this.defaultMessageStore.getMessageStoreConfig().getFlushDiskType()) {
             final GroupCommitService service = (GroupCommitService) this.flushCommitLogService;
             if (messageExt.isWaitStoreMsgOK()) {
@@ -671,6 +690,7 @@ public class CommitLog {
         }
         // Asynchronous flush
         else {
+            // 异步刷盘
             if (!this.defaultMessageStore.getMessageStoreConfig().isTransientStorePoolEnable()) {
                 flushCommitLogService.wakeup();
             } else {
@@ -679,6 +699,7 @@ public class CommitLog {
         }
     }
 
+    // TODO 之后再说
     public void handleHA(AppendMessageResult result, PutMessageResult putMessageResult, MessageExt messageExt) {
         if (BrokerRole.SYNC_MASTER == this.defaultMessageStore.getMessageStoreConfig().getBrokerRole()) {
             HAService service = this.defaultMessageStore.getHaService();
@@ -1198,6 +1219,15 @@ public class CommitLog {
             return msgStoreItemMemory;
         }
 
+        /**
+         * 写入消息
+         *
+         * @param fileFromOffset 通常就是文件名称转化成证书
+         * @param byteBuffer
+         * @param maxBlank
+         * @param msgInner
+         * @return
+         */
         public AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer, final int maxBlank,
             final MessageExtBrokerInner msgInner) {
             // STORETIMESTAMP + STOREHOSTADDRESS + OFFSET <br>
@@ -1263,6 +1293,7 @@ public class CommitLog {
             }
 
             // Determines whether there is sufficient free space
+            // 确定是否有足够的可用空间
             if ((msgLen + END_FILE_MIN_BLANK_LENGTH) > maxBlank) {
                 this.resetByteBuffer(this.msgStoreItemMemory, maxBlank);
                 // 1 TOTALSIZE
@@ -1273,6 +1304,7 @@ public class CommitLog {
                 // Here the length of the specially set maxBlank
                 final long beginTimeMills = CommitLog.this.defaultMessageStore.now();
                 byteBuffer.put(this.msgStoreItemMemory.array(), 0, maxBlank);
+                // 剩余空间不足，返回END_OF_FILE
                 return new AppendMessageResult(AppendMessageStatus.END_OF_FILE, wroteOffset, maxBlank, msgId, msgInner.getStoreTimestamp(),
                     queueOffset, CommitLog.this.defaultMessageStore.now() - beginTimeMills);
             }

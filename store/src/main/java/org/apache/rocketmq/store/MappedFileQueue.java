@@ -29,21 +29,30 @@ import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 
+/**
+ * MappedFile的管理容器
+ */
 public class MappedFileQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
 
     private static final int DELETE_FILES_BATCH_MAX = 10;
 
+    // commitLog 存储地址
     private final String storePath;
 
+    // 单个CommitLog大小为1G
     private final int mappedFileSize;
 
     private final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
 
+    // mmap文件创建服务
     private final AllocateMappedFileService allocateMappedFileService;
 
+    // 已经刷到磁盘的位置
     private long flushedWhere = 0;
+
+    // 当前数据提交指针，内存中ByteBuffer当前的写指针，该值大于等于flushedWhere
     private long committedWhere = 0;
 
     private volatile long storeTimestamp = 0;
@@ -74,6 +83,11 @@ public class MappedFileQueue {
         }
     }
 
+    /**
+     * 根据消息存储时间戳查找MappedFile,找到第一个最后一次修改时间戳大于timestamp的文件，如果没有找到，返回最后一个
+     *
+     * @param timestamp
+     */
     public MappedFile getMappedFileByTime(final long timestamp) {
         Object[] mfs = this.copyMappedFiles(0);
 
@@ -90,6 +104,12 @@ public class MappedFileQueue {
         return (MappedFile) mfs[mfs.length - 1];
     }
 
+    /**
+     * 返回mapedFiles数组
+     *
+     * @param reservedMappedFiles
+     * @return
+     */
     private Object[] copyMappedFiles(final int reservedMappedFiles) {
         Object[] mfs;
 
@@ -193,6 +213,8 @@ public class MappedFileQueue {
 
     public MappedFile getLastMappedFile(final long startOffset, boolean needCreate) {
         long createOffset = -1;
+
+        // 获取最后一个mapedFile
         MappedFile mappedFileLast = getLastMappedFile();
 
         if (mappedFileLast == null) {
@@ -203,6 +225,7 @@ public class MappedFileQueue {
             createOffset = mappedFileLast.getFileFromOffset() + this.mappedFileSize;
         }
 
+        // 如果需要创建新的mapedFile
         if (createOffset != -1 && needCreate) {
             String nextFilePath = this.storePath + File.separator + UtilAll.offset2FileName(createOffset);
             String nextNextFilePath = this.storePath + File.separator
@@ -210,10 +233,12 @@ public class MappedFileQueue {
             MappedFile mappedFile = null;
 
             if (this.allocateMappedFileService != null) {
+                // allocateMappedFileService负责异步生成新的mmap文件，主要是更加安全一些, 会将一些并行的操作串行化
                 mappedFile = this.allocateMappedFileService.putRequestAndReturnMappedFile(nextFilePath,
                     nextNextFilePath, this.mappedFileSize);
             } else {
                 try {
+                    // 直接生成mmap文件
                     mappedFile = new MappedFile(nextFilePath, this.mappedFileSize);
                 } catch (IOException e) {
                     log.error("create mappedFile exception", e);
@@ -240,6 +265,7 @@ public class MappedFileQueue {
     public MappedFile getLastMappedFile() {
         MappedFile mappedFileLast = null;
 
+        // 如果mappedFiles不为空，获取最后一个
         while (!this.mappedFiles.isEmpty()) {
             try {
                 mappedFileLast = this.mappedFiles.get(this.mappedFiles.size() - 1);
@@ -464,6 +490,7 @@ public class MappedFileQueue {
             MappedFile firstMappedFile = this.getFirstMappedFile();
             MappedFile lastMappedFile = this.getLastMappedFile();
             if (firstMappedFile != null && lastMappedFile != null) {
+                // 如果offset小于第一个文件的初始偏移或者offset大于等于最后一个文件的初始偏移加上文件大小
                 if (offset < firstMappedFile.getFileFromOffset() || offset >= lastMappedFile.getFileFromOffset() + this.mappedFileSize) {
                     LOG_ERROR.warn("Offset not matched. Request offset: {}, firstOffset: {}, lastOffset: {}, mappedFileSize: {}, mappedFiles count: {}",
                         offset,
@@ -472,6 +499,7 @@ public class MappedFileQueue {
                         this.mappedFileSize,
                         this.mappedFiles.size());
                 } else {
+                    // 获取下标
                     int index = (int) ((offset / this.mappedFileSize) - (firstMappedFile.getFileFromOffset() / this.mappedFileSize));
                     MappedFile targetFile = null;
                     try {
@@ -479,11 +507,13 @@ public class MappedFileQueue {
                     } catch (Exception ignored) {
                     }
 
+                    // 确认是否是该文件
                     if (targetFile != null && offset >= targetFile.getFileFromOffset()
                         && offset < targetFile.getFileFromOffset() + this.mappedFileSize) {
                         return targetFile;
                     }
 
+                    // 如果通过下标没有找到，遍历mapedFiles，找到指定文件
                     for (MappedFile tmpMappedFile : this.mappedFiles) {
                         if (offset >= tmpMappedFile.getFileFromOffset()
                             && offset < tmpMappedFile.getFileFromOffset() + this.mappedFileSize) {
