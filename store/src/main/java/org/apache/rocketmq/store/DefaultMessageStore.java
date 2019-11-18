@@ -89,7 +89,7 @@ public class DefaultMessageStore implements MessageStore {
     // MappedFile分配服务
     private final AllocateMappedFileService allocateMappedFileService;
 
-    // CommitLog消息分发，根据CommitLog构建ConsumeQueue,IndexFile文件
+    // 转发CommitLog文件更新时间，根据CommitLog构建ConsumeQueue,IndexFile文件
     private final ReputMessageService reputMessageService;
 
     // 存储HA机制
@@ -122,7 +122,10 @@ public class DefaultMessageStore implements MessageStore {
 
     private AtomicLong printTimes = new AtomicLong(0);
 
-    // CommitLog转发请求
+    /**
+     * CommitLog转发请求，用于构建consumeQueue和Index
+     * @see org.apache.rocketmq.broker.BrokerController.initialize
+     */
     private final LinkedList<CommitLogDispatcher> dispatcherList;
 
     private RandomAccessFile lockFile;
@@ -232,10 +235,12 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     /**
+     * TODO 没弄明白
+     *
      * @throws Exception
      */
     public void start() throws Exception {
-
+        // TODO 为何采用文件锁
         lock = lockFile.getChannel().tryLock(0, 1, false);
         if (lock == null || lock.isShared() || !lock.isValid()) {
             throw new RuntimeException("Lock failed,MQ already started");
@@ -249,7 +254,8 @@ public class DefaultMessageStore implements MessageStore {
              * 2. DLedger committedPos may be missing, so the maxPhysicalPosInLogicQueue maybe bigger that maxOffset returned by DLedgerCommitLog, just let it go;
              * 3. Calculate the reput offset according to the consume queue;
              * 4. Make sure the fall-behind messages to be dispatched before starting the commitlog, especially when the broker role are automatically changed.
-             */
+            */
+            // 计算需要转发的消息的最小偏移量
             long maxPhysicalPosInLogicQueue = commitLog.getMinOffset();
             for (ConcurrentMap<Integer, ConsumeQueue> maps : this.consumeQueueTable.values()) {
                 for (ConsumeQueue logic : maps.values()) {
@@ -258,6 +264,7 @@ public class DefaultMessageStore implements MessageStore {
                     }
                 }
             }
+            // TODO 防御型编程
             if (maxPhysicalPosInLogicQueue < 0) {
                 maxPhysicalPosInLogicQueue = 0;
             }
@@ -275,6 +282,8 @@ public class DefaultMessageStore implements MessageStore {
             }
             log.info("[SetReputOffset] maxPhysicalPosInLogicQueue={} clMinOffset={} clMaxOffset={} clConfirmedOffset={}",
                 maxPhysicalPosInLogicQueue, this.commitLog.getMinOffset(), this.commitLog.getMaxOffset(), this.commitLog.getConfirmOffset());
+
+            // 设置初始转发消息的偏移
             this.reputMessageService.setReputFromOffset(maxPhysicalPosInLogicQueue);
             this.reputMessageService.start();
 
@@ -1159,6 +1168,7 @@ public class DefaultMessageStore implements MessageStore {
         return null;
     }
 
+    // 根据topic和queueId获取ConsumeQueue
     public ConsumeQueue findConsumeQueue(String topic, int queueId) {
         ConcurrentMap<Integer, ConsumeQueue> map = consumeQueueTable.get(topic);
         if (null == map) {
@@ -1455,6 +1465,10 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
+    /**
+     * 根据commitLog消息转发，更新consumeQueue
+     * @param dispatchRequest
+     */
     public void putMessagePositionInfo(DispatchRequest dispatchRequest) {
         ConsumeQueue cq = this.findConsumeQueue(dispatchRequest.getTopic(), dispatchRequest.getQueueId());
         cq.putMessagePositionInfoWrapper(dispatchRequest);
@@ -1509,6 +1523,10 @@ public class DefaultMessageStore implements MessageStore {
         }, 6, TimeUnit.SECONDS);
     }
 
+    /**
+     * 消息消费队列转发任务实现类
+     * 根据消息更新consumeQueue
+     */
     class CommitLogDispatcherBuildConsumeQueue implements CommitLogDispatcher {
 
         @Override
@@ -1526,6 +1544,9 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
+    /**
+     * 索引文件转发任务实现类，根据消息更新索引
+     */
     class CommitLogDispatcherBuildIndex implements CommitLogDispatcher {
 
         @Override
@@ -1838,11 +1859,14 @@ public class DefaultMessageStore implements MessageStore {
             return DefaultMessageStore.this.commitLog.getMaxOffset() - this.reputFromOffset;
         }
 
+        // commitLog有消息尚未转发
         private boolean isCommitLogAvailable() {
             return this.reputFromOffset < DefaultMessageStore.this.commitLog.getMaxOffset();
         }
 
+        // 转发推送消息
         private void doReput() {
+            // 如果转发起始偏移小于commitLog最小偏移，说明转发大大落后，出现问题
             if (this.reputFromOffset < DefaultMessageStore.this.commitLog.getMinOffset()) {
                 log.warn("The reputFromOffset={} is smaller than minPyOffset={}, this usually indicate that the dispatch behind too much and the commitlog has expired.",
                     this.reputFromOffset, DefaultMessageStore.this.commitLog.getMinOffset());
@@ -1850,23 +1874,27 @@ public class DefaultMessageStore implements MessageStore {
             }
             for (boolean doNext = true; this.isCommitLogAvailable() && doNext; ) {
 
+                // TODO 不太理解 如果允许重复发送，并且reputFromOffset大于已经确认的消息的偏移，等待重新发送
                 if (DefaultMessageStore.this.getMessageStoreConfig().isDuplicationEnable()
                     && this.reputFromOffset >= DefaultMessageStore.this.getConfirmOffset()) {
                     break;
                 }
 
+                // 根据偏移获取从reputFromOffset到commitLog可读位置之间所有的消息
                 SelectMappedBufferResult result = DefaultMessageStore.this.commitLog.getData(reputFromOffset);
                 if (result != null) {
                     try {
                         this.reputFromOffset = result.getStartOffset();
 
                         for (int readSize = 0; readSize < result.getSize() && doNext; ) {
+                            // 读取一条消息，成成DispatchRequest
                             DispatchRequest dispatchRequest =
                                 DefaultMessageStore.this.commitLog.checkMessageAndReturnSize(result.getByteBuffer(), false, false);
                             int size = dispatchRequest.getBufferSize() == -1 ? dispatchRequest.getMsgSize() : dispatchRequest.getBufferSize();
 
                             if (dispatchRequest.isSuccess()) {
                                 if (size > 0) {
+                                    // 转发请求
                                     DefaultMessageStore.this.doDispatch(dispatchRequest);
 
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()
@@ -1924,6 +1952,7 @@ public class DefaultMessageStore implements MessageStore {
             while (!this.isStopped()) {
                 try {
                     Thread.sleep(1);
+                    // 没执行一次任务推送，就休息一毫秒，在尝试
                     this.doReput();
                 } catch (Exception e) {
                     DefaultMessageStore.log.warn(this.getServiceName() + " service has exception. ", e);

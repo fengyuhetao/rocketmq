@@ -66,10 +66,11 @@ public class MappedFile extends ReferenceResource {
 
     //mappedFile文件大小，参照MessageStoreConfig.mapedFileSizeCommitLog，默认1G
     protected int fileSize;
+
     protected FileChannel fileChannel;
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
-     * 从transientStorePool的池中拿到ByteBuffer，可能为null
+     * 从transientStorePool的池中拿到ByteBuffer，可能为null, 只有开启transientStorePool才有效
      */
     protected ByteBuffer writeBuffer = null;
 
@@ -372,6 +373,7 @@ public class MappedFile extends ReferenceResource {
      */
     public int commit(final int commitLeastPages) {
         if (writeBuffer == null) {
+            // 说明没有启动transientStorePool, 消息直接写入到和文件映射起来的内存中
             //no need to commit data to file channel, so just regard wrotePosition as committedPosition.
             return this.wrotePosition.get();
         }
@@ -487,6 +489,7 @@ public class MappedFile extends ReferenceResource {
         if ((pos + size) <= readPosition) {
 
             if (this.hold()) {
+                // 获取整个mapedByteBuffer
                 ByteBuffer byteBuffer = this.mappedByteBuffer.slice();
                 byteBuffer.position(pos);
                 ByteBuffer byteBufferNew = byteBuffer.slice();
@@ -505,7 +508,7 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
-     * 查找pos到当前最大可读之间的数据
+     * 获取pos到当前最大可读之间的数据
      *
      * @param pos
      * @return

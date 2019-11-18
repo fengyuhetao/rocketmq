@@ -33,8 +33,11 @@ public class IndexHeader {
     private AtomicLong endTimestamp = new AtomicLong(0);
     private AtomicLong beginPhyOffset = new AtomicLong(0);
     private AtomicLong endPhyOffset = new AtomicLong(0);
+
+    // hashSlot个数，并不是hash槽使用个数，意义不大
     private AtomicInteger hashSlotCount = new AtomicInteger(0);
 
+    // Index条目列表当前已经使用的个数，Index条目在Index条目列表中按顺序存储
     private AtomicInteger indexCount = new AtomicInteger(1);
 
     public IndexHeader(final ByteBuffer byteBuffer) {

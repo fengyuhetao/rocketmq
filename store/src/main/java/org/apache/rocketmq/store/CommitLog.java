@@ -58,6 +58,8 @@ public class CommitLog {
     private final AppendMessageCallback appendMessageCallback;
     private final ThreadLocal<MessageExtBatchEncoder> batchEncoderThreadLocal;
     protected HashMap<String/* topic-queueid */, Long/* offset */> topicQueueTable = new HashMap<String, Long>(1024);
+
+    // commitLog的中的消息被确认已经消费的指針
     protected volatile long confirmOffset = -1L;
 
     private volatile long beginTimeInLock = 0;
@@ -110,7 +112,9 @@ public class CommitLog {
     }
 
     public long flush() {
+        // 如果启动了transientStorePool,将消息从内存中提交到fileChannel中
         this.mappedFileQueue.commit(0);
+        // 将消息从pageCache持久化到文件中
         this.mappedFileQueue.flush(0);
         return this.mappedFileQueue.getFlushedWhere();
     }
@@ -247,7 +251,7 @@ public class CommitLog {
             switch (magicCode) {
                 case MESSAGE_MAGIC_CODE:
                     break;
-                case BLANK_MAGIC_CODE:
+                case BLANK_MAGIC_CODE: // 文件已经读取到结束了
                     return new DispatchRequest(0, true /* success */);
                 default:
                     log.warn("found a illegal magic code 0x" + Integer.toHexString(magicCode));
@@ -257,29 +261,17 @@ public class CommitLog {
             byte[] bytesContent = new byte[totalSize];
 
             int bodyCRC = byteBuffer.getInt();
-
             int queueId = byteBuffer.getInt();
-
             int flag = byteBuffer.getInt();
-
             long queueOffset = byteBuffer.getLong();
-
             long physicOffset = byteBuffer.getLong();
-
             int sysFlag = byteBuffer.getInt();
-
             long bornTimeStamp = byteBuffer.getLong();
-
             ByteBuffer byteBuffer1 = byteBuffer.get(bytesContent, 0, 8);
-
             long storeTimestamp = byteBuffer.getLong();
-
             ByteBuffer byteBuffer2 = byteBuffer.get(bytesContent, 0, 8);
-
             int reconsumeTimes = byteBuffer.getInt();
-
             long preparedTransactionOffset = byteBuffer.getLong();
-
             int bodyLen = byteBuffer.getInt();
             if (bodyLen > 0) {
                 if (readBody) {
@@ -826,6 +818,7 @@ public class CommitLog {
 
     /**
      * According to receive certain message or offset storage time if an error occurs, it returns -1
+     * 返回消息的存储时间
      */
     public long pickupStoreTimestamp(final long offset, final int size) {
         if (offset >= this.getMinOffset()) {
@@ -842,6 +835,7 @@ public class CommitLog {
         return -1;
     }
 
+    // 获取commitLog目录下最小偏移量
     public long getMinOffset() {
         MappedFile mappedFile = this.mappedFileQueue.getFirstMappedFile();
         if (mappedFile != null) {
@@ -855,16 +849,19 @@ public class CommitLog {
         return -1;
     }
 
+    // 根据偏移量和消息长度获取消息
     public SelectMappedBufferResult getMessage(final long offset, final int size) {
         int mappedFileSize = this.defaultMessageStore.getMessageStoreConfig().getMapedFileSizeCommitLog();
         MappedFile mappedFile = this.mappedFileQueue.findMappedFileByOffset(offset, offset == 0);
         if (mappedFile != null) {
+            // 查找消息在文件中的偏移量
             int pos = (int) (offset % mappedFileSize);
             return mappedFile.selectMappedBuffer(pos, size);
         }
         return null;
     }
 
+    // 获取offset下一个文件的初始offset
     public long rollNextFile(final long offset) {
         int mappedFileSize = this.defaultMessageStore.getMessageStoreConfig().getMapedFileSizeCommitLog();
         return offset + mappedFileSize - offset % mappedFileSize;
