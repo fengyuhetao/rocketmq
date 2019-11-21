@@ -29,9 +29,17 @@ public class IndexHeader {
     private static int hashSlotcountIndex = 32;
     private static int indexCountIndex = 36;
     private final ByteBuffer byteBuffer;
+
+    // 该索引文件包含消息的最小存储时间
     private AtomicLong beginTimestamp = new AtomicLong(0);
+
+    // 该索引文件包含消息的最大存储时间
     private AtomicLong endTimestamp = new AtomicLong(0);
+
+    // 该索引文件包含消息的最小物理偏移量（commitLog文件偏移量）
     private AtomicLong beginPhyOffset = new AtomicLong(0);
+
+    // 该索引文件包含消息的最大物理偏移量（commitLog文件偏移量）
     private AtomicLong endPhyOffset = new AtomicLong(0);
 
     // hashSlot个数，并不是hash槽使用个数，意义不大
@@ -44,6 +52,7 @@ public class IndexHeader {
         this.byteBuffer = byteBuffer;
     }
 
+    // 加载IndexHeader
     public void load() {
         this.beginTimestamp.set(byteBuffer.getLong(beginTimestampIndex));
         this.endTimestamp.set(byteBuffer.getLong(endTimestampIndex));

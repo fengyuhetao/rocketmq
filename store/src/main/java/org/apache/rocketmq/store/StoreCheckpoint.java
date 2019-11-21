@@ -32,6 +32,7 @@ public class StoreCheckpoint {
     private final RandomAccessFile randomAccessFile;
     private final FileChannel fileChannel;
     private final MappedByteBuffer mappedByteBuffer;
+
     // commitLog文件刷盘时间点
     private volatile long physicMsgTimestamp = 0;
     // 消息消费队列文件刷盘时间点

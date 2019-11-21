@@ -112,6 +112,9 @@ public class MessageStoreConfig {
     private int maxHashSlotNum = 5000000;
     private int maxIndexNum = 5000000 * 4;
     private int maxMsgsNumBatch = 64;
+
+    // 消息索引是否安全，默认为false,文件恢复时选择文件检测点（commitLog.consumequeue)的最小值与文件最后更新相比
+    // 如果为true,文件恢复时选择文件检测点保存的更新时间作为对比
     @ImportantField
     private boolean messageIndexSafe = false;
     private int haListenPort = 10912;
@@ -133,7 +136,7 @@ public class MessageStoreConfig {
     private boolean warmMapedFileEnable = false;
     private boolean offsetCheckInSlave = false;
     private boolean debugLockEnable = false;
-    // 是否允许重发
+    // 是否允许重复复制
     private boolean duplicationEnable = false;
     private boolean diskFallRecorded = true;
     private long osPageCacheBusyTimeOutMills = 1000;

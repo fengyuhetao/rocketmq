@@ -20,6 +20,7 @@ import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
+import org.apache.rocketmq.common.message.MessageConst;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
 /**
@@ -61,6 +62,7 @@ public class Producer {
                     "TagA" /* Tag */,
                     ("HelloHelloHello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
                 );
+                msg.getProperties().put(MessageConst.PROPERTY_KEYS, "hahah");
 
                 /*
                  * Call send message to deliver message to one of brokers.

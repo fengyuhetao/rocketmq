@@ -36,6 +36,7 @@ public class MappedFileQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
 
+    // 一次最多可以删除10个文件
     private static final int DELETE_FILES_BATCH_MAX = 10;
 
     // commitLog 存储地址
@@ -164,6 +165,7 @@ public class MappedFileQueue {
         }
     }
 
+    // 加载文件
     public boolean load() {
         File dir = new File(this.storePath);
         File[] files = dir.listFiles();
@@ -372,8 +374,10 @@ public class MappedFileQueue {
         int deleteCount = 0;
         List<MappedFile> files = new ArrayList<MappedFile>();
         if (null != mfs) {
+            // 从第一个文件开始，一直到倒数第二个文件，最后一个文件默认不会清理
             for (int i = 0; i < mfsLength; i++) {
                 MappedFile mappedFile = (MappedFile) mfs[i];
+                // 计算最后一次更新时间+过期时间（72小时）
                 long liveMaxTimestamp = mappedFile.getLastModifiedTimestamp() + expiredTime;
                 if (System.currentTimeMillis() >= liveMaxTimestamp || cleanImmediately) {
                     if (mappedFile.destroy(intervalForcibly)) {

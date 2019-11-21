@@ -65,7 +65,9 @@ public class IndexService {
                     IndexFile f = new IndexFile(file.getPath(), this.hashSlotNum, this.indexNum, 0, 0);
                     f.load();
 
+                    // 如果上次异常退出
                     if (!lastExitOK) {
+                        // 索引文件最大的消息时间戳大于检测点中存储的索引文件刷盘时间点，说明索引存在异常
                         if (f.getEndTimestamp() > this.defaultMessageStore.getStoreCheckpoint()
                             .getIndexMsgTimestamp()) {
                             f.destroy(0);
@@ -74,6 +76,7 @@ public class IndexService {
                     }
 
                     log.info("load index file OK, " + f.getFileName());
+                    // 将文件添加到indexFileList中
                     this.indexFileList.add(f);
                 } catch (IOException e) {
                     log.error("load file {} error", file, e);
@@ -219,6 +222,7 @@ public class IndexService {
                     return;
             }
 
+            // 根据消息唯一键构建索引
             if (req.getUniqKey() != null) {
                 indexFile = putKey(indexFile, msg, buildKey(topic, req.getUniqKey()));
                 if (indexFile == null) {
@@ -227,6 +231,7 @@ public class IndexService {
                 }
             }
 
+            // RocketMQ支持为同一消息建立多个索引，多个索引用空格分开
             if (keys != null && keys.length() > 0) {
                 String[] keyset = keys.split(MessageConst.KEY_SEPARATOR);
                 for (int i = 0; i < keyset.length; i++) {
