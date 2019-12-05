@@ -113,6 +113,8 @@ public class MQClientInstance {
     });
     private final ClientRemotingProcessor clientRemotingProcessor;
     private final PullMessageService pullMessageService;
+
+    // 负责消息队列重新分布
     private final RebalanceService rebalanceService;
     private final DefaultMQProducer defaultMQProducer;
     private final ConsumerStatsManager consumerStatsManager;
@@ -977,6 +979,7 @@ public class MQClientInstance {
         this.rebalanceService.wakeup();
     }
 
+    // 遍历已经注册的消费者，并对消费者执行doRebalance方法
     public void doRebalance() {
         for (Map.Entry<String, MQConsumerInner> entry : this.consumerTable.entrySet()) {
             MQConsumerInner impl = entry.getValue();
@@ -1037,6 +1040,7 @@ public class MQClientInstance {
         return null;
     }
 
+    // 根据borkerName和brokerId获取Broker的信息
     public FindBrokerResult findBrokerAddressInSubscribe(
         final String brokerName,
         final long brokerId,
@@ -1077,6 +1081,7 @@ public class MQClientInstance {
         return 0;
     }
 
+    // 根据topic和group获取消费者id列表
     public List<String> findConsumerIdList(final String topic, final String group) {
         String brokerAddr = this.findBrokerAddrByTopic(topic);
         if (null == brokerAddr) {

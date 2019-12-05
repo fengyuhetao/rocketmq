@@ -604,6 +604,7 @@ public class MQClientAPIImpl {
         return null;
     }
 
+    // 客户端消息拉取
     private void pullMessageAsync(
         final String addr,
         final RemotingCommand request,
@@ -646,6 +647,7 @@ public class MQClientAPIImpl {
         return this.processPullResponse(response);
     }
 
+    // 根据响应结果，解码成PullResultExt对象
     private PullResult processPullResponse(
         final RemotingCommand response) throws MQBrokerException, RemotingCommandException {
         PullStatus pullStatus = PullStatus.NO_NEW_MSG;

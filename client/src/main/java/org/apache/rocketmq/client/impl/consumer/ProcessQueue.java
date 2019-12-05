@@ -36,6 +36,8 @@ import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
 
 /**
  * Queue consumption snapshot
+ * ProcessQueue是MessageQueue在消费端的重现，快照。
+ * PullMessageService从消息服务器默认每次拉取32条消息，按消息的队列偏移量顺序存放在ProcessQueue中，PullMessageService然后将消息提交到消费者消费线程池，消息成功消费后，从ProcessQueue中移除
  */
 public class ProcessQueue {
     public final static long REBALANCE_LOCK_MAX_LIVE_TIME =
@@ -43,34 +45,49 @@ public class ProcessQueue {
     public final static long REBALANCE_LOCK_INTERVAL = Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockInterval", "20000"));
     private final static long PULL_MAX_IDLE_TIME = Long.parseLong(System.getProperty("rocketmq.client.pull.pullMaxIdleTime", "120000"));
     private final InternalLogger log = ClientLogger.getLog();
+
+    // 读写锁，控制多线程并发修改msgTreeMap，consumingMsgOrderlyTreeMap
     private final ReadWriteLock lockTreeMap = new ReentrantReadWriteLock();
+
+    // 消息存储容器 Long: 消息在ConsumeQueue中的偏移量，MessageExt:消息实体
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<Long, MessageExt>();
+
+    // ProcessQueue中的总消息数
     private final AtomicLong msgCount = new AtomicLong();
     private final AtomicLong msgSize = new AtomicLong();
     private final Lock lockConsume = new ReentrantLock();
     /**
      * A subset of msgTreeMap, will only be used when orderly consume
      */
+    // 消息临时存储容器，该结构用于处理顺序消息，消息线程从ProcessQueue的msgTreeMap中取消息前，现将消息临时存储在这个里边
     private final TreeMap<Long, MessageExt> consumingMsgOrderlyTreeMap = new TreeMap<Long, MessageExt>();
     private final AtomicLong tryUnlockTimes = new AtomicLong(0);
     private volatile long queueOffsetMax = 0L;
     private volatile boolean dropped = false;
     private volatile long lastPullTimestamp = System.currentTimeMillis();
+
+    // 上一次消息消费时间戳
     private volatile long lastConsumeTimestamp = System.currentTimeMillis();
     private volatile boolean locked = false;
     private volatile long lastLockTimestamp = System.currentTimeMillis();
     private volatile boolean consuming = false;
+
+    //TODO 干嘛的
     private volatile long msgAccCnt = 0;
 
+    // 判断锁是否过期
     public boolean isLockExpired() {
         return (System.currentTimeMillis() - this.lastLockTimestamp) > REBALANCE_LOCK_MAX_LIVE_TIME;
     }
 
+    // 判断PullMessageService是否空闲，默认120s
     public boolean isPullExpired() {
         return (System.currentTimeMillis() - this.lastPullTimestamp) > PULL_MAX_IDLE_TIME;
     }
 
     /**
+     * 移除消费超时的消息，默认超过15分钟未消费的消息将延迟3个级别在消费
+     * 顺序消费由于只有消费完上一条，才能消费下一条，所以直接返回即可
      * @param pushConsumer
      */
     public void cleanExpiredMsg(DefaultMQPushConsumer pushConsumer) {
@@ -106,6 +123,7 @@ public class ProcessQueue {
                     try {
                         if (!msgTreeMap.isEmpty() && msg.getQueueOffset() == msgTreeMap.firstKey()) {
                             try {
+                                // 移除消息
                                 removeMessage(Collections.singletonList(msg));
                             } catch (Exception e) {
                                 log.error("send expired msg exception", e);
@@ -123,6 +141,7 @@ public class ProcessQueue {
         }
     }
 
+    // 添加消息， PullMessageService拉取消息之后，先调用该方法将消息添加到ProcessQueue中
     public boolean putMessage(final List<MessageExt> msgs) {
         boolean dispatchToConsume = false;
         try {
@@ -181,6 +200,7 @@ public class ProcessQueue {
         return 0;
     }
 
+    // 从msgTreeMap中移除消息
     public long removeMessage(final List<MessageExt> msgs) {
         long result = -1;
         final long now = System.currentTimeMillis();

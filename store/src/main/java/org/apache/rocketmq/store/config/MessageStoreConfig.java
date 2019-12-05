@@ -138,6 +138,8 @@ public class MessageStoreConfig {
     private boolean debugLockEnable = false;
     // 是否允许重复复制
     private boolean duplicationEnable = false;
+
+    // 是否统计磁盘的使用情况
     private boolean diskFallRecorded = true;
     private long osPageCacheBusyTimeOutMills = 1000;
     private int defaultQueryMaxNum = 32;
