@@ -16,6 +16,7 @@
  */
 package org.apache.rocketmq.client.consumer.store;
 
+// 读取方式
 public enum ReadOffsetType {
     /**
      * From memory

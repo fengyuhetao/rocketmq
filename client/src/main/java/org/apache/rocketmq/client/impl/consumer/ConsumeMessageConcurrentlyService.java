@@ -211,12 +211,16 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         return result;
     }
 
+    /**
+     * @see ConsumeMessageService#submitConsumeRequest(java.util.List, org.apache.rocketmq.client.impl.consumer.ProcessQueue, org.apache.rocketmq.common.message.MessageQueue, boolean)
+     */
     @Override
     public void submitConsumeRequest(
             final List<MessageExt> msgs,
             final ProcessQueue processQueue,
             final MessageQueue messageQueue,
             final boolean dispatchToConsume) {
+        // 一次消息消费任务ConsumeRequest中包含的消息条数，默认为1条
         final int consumeBatchSize = this.defaultMQPushConsumer.getConsumeMessageBatchMaxSize();
         if (msgs.size() <= consumeBatchSize) {
             ConsumeRequest consumeRequest = new ConsumeRequest(msgs, processQueue, messageQueue);
@@ -265,6 +269,9 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
 
     /**
      * 根据消息监听器返回的结果，计算ackIndex，为下文发送ACK做准备
+     * 如果是集群模式
+     * 1. 业务方返回RECONSUME_LATER,消息并不会重新被消费，只是以警告级别输出到日志文件
+     * 2. 业务方返回CONSUME_SUCCESS,ackIndex = consumeRequeset.getMsgs().size() - 1,所以i = ackIndex + 1 = msgs.size()，不会执行sendMessageBack
      *
      * @param status
      * @param context
@@ -327,8 +334,10 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                 break;
         }
 
+        // 从ProcessQueue中移除这批消息，这里返回的偏移量是移除该批消息后最小的偏移量，然后用该偏移量更新消息消费进度
         long offset = consumeRequest.getProcessQueue().removeMessage(consumeRequest.getMsgs());
         if (offset >= 0 && !consumeRequest.getProcessQueue().isDropped()) {
+            // 更新消费进度，以便消费者重启后能从上一次的消费进度开始消费，避免消息重复消费
             this.defaultMQPushConsumerImpl.getOffsetStore().updateOffset(consumeRequest.getMessageQueue(), offset, true);
         }
     }
@@ -337,6 +346,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         return this.defaultMQPushConsumerImpl.getConsumerStatsManager();
     }
 
+    // 发送ACK消息
     public boolean sendMessageBack(final MessageExt msg, final ConsumeConcurrentlyContext context) {
         int delayLevel = context.getDelayLevelWhenNextConsume();
 
@@ -434,6 +444,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                         MessageAccessor.setConsumeStartTimeStamp(msg, String.valueOf(System.currentTimeMillis()));
                     }
                 }
+                // 自定义消息处理监听器
                 status = listener.consumeMessage(Collections.unmodifiableList(msgs), context);
             } catch (Throwable e) {
                 log.warn("consumeMessage exception: {} Group: {} Msgs: {} MQ: {}",

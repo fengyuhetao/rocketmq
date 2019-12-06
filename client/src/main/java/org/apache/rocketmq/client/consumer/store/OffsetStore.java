@@ -28,7 +28,7 @@ import org.apache.rocketmq.remoting.exception.RemotingException;
  */
 public interface OffsetStore {
     /**
-     * Load
+     * Load 从消息进度存储文件中加载消息进度
      */
     void load() throws MQClientException;
 
@@ -65,6 +65,8 @@ public interface OffsetStore {
     Map<MessageQueue, Long> cloneOffsetTable(String topic);
 
     /**
+     * 更新存储在Boker短的消息消费进度，使用集群模式
+     *
      * @param mq
      * @param offset
      * @param isOneway

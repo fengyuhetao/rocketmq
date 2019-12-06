@@ -37,8 +37,9 @@ public interface ConsumeMessageService {
     ConsumeMessageDirectlyResult consumeMessageDirectly(final MessageExt msg, final String brokerName);
 
     /**
+     * 消息消费
      *
-     * @param msgs 消息列表
+     * @param msgs 消息列表，最多32条
      * @param processQueue 消息处理队列
      * @param messageQueue 消息所属消费队列
      * @param dispathToConsume 是否转发到消费线程池

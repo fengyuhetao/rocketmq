@@ -96,6 +96,7 @@ public class DefaultMessageStore implements MessageStore {
     // 存储HA机制
     private final HAService haService;
 
+    // 定时消息实现类
     private final ScheduleMessageService scheduleMessageService;
 
     private final StoreStatsService storeStatsService;
