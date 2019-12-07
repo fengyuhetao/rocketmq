@@ -121,6 +121,7 @@ public abstract class RebalanceImpl {
         }
     }
 
+    // 将processQueueTable组织成指定格式，方便下一步向Broker发送锁定消息队列请求
     private HashMap<String/* brokerName */, Set<MessageQueue>> buildProcessQueueTableByBrokerName() {
         HashMap<String, Set<MessageQueue>> result = new HashMap<String, Set<MessageQueue>>();
         for (MessageQueue mq : this.processQueueTable.keySet()) {
@@ -184,6 +185,7 @@ public abstract class RebalanceImpl {
 
             FindBrokerResult findBrokerResult = this.mQClientFactory.findBrokerAddressInSubscribe(brokerName, MixAll.MASTER_ID, true);
             if (findBrokerResult != null) {
+                // 1. 向Broker(Master主节点)发送锁定消息队列
                 LockBatchRequestBody requestBody = new LockBatchRequestBody();
                 requestBody.setConsumerGroup(this.consumerGroup);
                 requestBody.setClientId(this.mQClientFactory.getClientId());
@@ -193,6 +195,7 @@ public abstract class RebalanceImpl {
                     Set<MessageQueue> lockOKMQSet =
                             this.mQClientFactory.getMQClientAPIImpl().lockBatchMQ(findBrokerResult.getBrokerAddr(), requestBody, 1000);
 
+                    // 2. 将锁定成功的消息队列相对应的处理队列设置为锁定状态,并更新锁定时间
                     for (MessageQueue mq : lockOKMQSet) {
                         ProcessQueue processQueue = this.processQueueTable.get(mq);
                         if (processQueue != null) {
@@ -204,6 +207,8 @@ public abstract class RebalanceImpl {
                             processQueue.setLastLockTimestamp(System.currentTimeMillis());
                         }
                     }
+
+                    // TODO 遍历当前处理队列中的消息消费队列，如果当前消费者不持有该消息队列的锁，将处理队列锁状态设置为false,暂停该消息消费队列的消息拉取与消息消费
                     for (MessageQueue mq : mqs) {
                         if (!lockOKMQSet.contains(mq)) {
                             ProcessQueue processQueue = this.processQueueTable.get(mq);
@@ -340,8 +345,8 @@ public abstract class RebalanceImpl {
     /**
      * 判断消息队列分配是否发生变化
      *
-     * @param topic 主题
-     * @param mqSet 待重新分配后的消息队列集合
+     * @param topic   主题
+     * @param mqSet   待重新分配后的消息队列集合
      * @param isOrder 是否有序
      * @return
      */
@@ -391,7 +396,7 @@ public abstract class RebalanceImpl {
         for (MessageQueue mq : mqSet) {
             // 如果当前负载队列集合中不包含mq,说明有新的队列加入
             if (!this.processQueueTable.containsKey(mq)) {
-                // 给队列加锁
+                // 如果是顺序消息并且给队列加锁失败
                 if (isOrder && !this.lock(mq)) {
                     log.warn("doRebalance, {}, add a new mq failed, {}, because lock failed", consumerGroup, mq);
                     continue;

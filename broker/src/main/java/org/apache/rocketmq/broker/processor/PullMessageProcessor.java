@@ -229,11 +229,14 @@ public class PullMessageProcessor implements NettyRequestProcessor {
             return response;
         }
 
+        // 构建消息过滤对象
         MessageFilter messageFilter;
         if (this.brokerController.getBrokerConfig().isFilterSupportRetry()) {
+            // 支持对重试主题的过滤
             messageFilter = new ExpressionForRetryMessageFilter(subscriptionData, consumerFilterData,
                 this.brokerController.getConsumerFilterManager());
         } else {
+            // 不支持对重试主题的过滤
             messageFilter = new ExpressionMessageFilter(subscriptionData, consumerFilterData,
                 this.brokerController.getConsumerFilterManager());
         }

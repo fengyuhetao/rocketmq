@@ -69,7 +69,7 @@ public class ExpressionMessageFilter implements MessageFilter {
 
         // by tags code.
         if (ExpressionType.isTagType(subscriptionData.getExpressionType())) {
-
+            // 消息生产者没有设置tag
             if (tagsCode == null) {
                 return true;
             }

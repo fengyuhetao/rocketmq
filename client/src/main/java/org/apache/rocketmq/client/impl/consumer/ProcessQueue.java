@@ -56,11 +56,13 @@ public class ProcessQueue {
     // ProcessQueue中的总消息数
     private final AtomicLong msgCount = new AtomicLong();
     private final AtomicLong msgSize = new AtomicLong();
+
+    // 消息消费锁
     private final Lock lockConsume = new ReentrantLock();
     /**
      * A subset of msgTreeMap, will only be used when orderly consume
      */
-    // 消息临时存储容器，该结构用于处理顺序消息，消息线程从ProcessQueue的msgTreeMap中取消息前，现将消息临时存储在这个里边
+    // 消息临时存储容器，该结构用于处理顺序消息，消息线程从ProcessQueue的msgTreeMap中取消息前，先将消息临时存储在这个里边
     private final TreeMap<Long, MessageExt> consumingMsgOrderlyTreeMap = new TreeMap<Long, MessageExt>();
     private final AtomicLong tryUnlockTimes = new AtomicLong(0);
     private volatile long queueOffsetMax = 0L;
@@ -283,6 +285,7 @@ public class ProcessQueue {
         }
     }
 
+    // 将该批消息从ProcessQueue中移除
     public long commit() {
         try {
             this.lockTreeMap.writeLock().lockInterruptibly();
@@ -294,6 +297,7 @@ public class ProcessQueue {
                 }
                 this.consumingMsgOrderlyTreeMap.clear();
                 if (offset != null) {
+                    // 返回待保存的消息消费进度
                     return offset + 1;
                 }
             } finally {
