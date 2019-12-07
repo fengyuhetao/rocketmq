@@ -40,6 +40,7 @@ public class ClientHousekeepingService implements ChannelEventListener {
 
     public void start() {
 
+        // 每隔10s扫描注册表，检查消费者，生产者，filterServer
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {

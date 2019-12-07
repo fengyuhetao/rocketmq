@@ -587,6 +587,7 @@ public class MQClientInstance {
         }
     }
 
+    // 定时将消息段订阅信息中心的类过滤模式的过滤类源码上传到FilterServer
     private void uploadFilterClassSource() {
         Iterator<Entry<String, MQConsumerInner>> it = this.consumerTable.entrySet().iterator();
         while (it.hasNext()) {

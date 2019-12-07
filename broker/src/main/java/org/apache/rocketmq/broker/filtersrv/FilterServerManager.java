@@ -64,9 +64,11 @@ public class FilterServerManager {
         }, 1000 * 5, 1000 * 30, TimeUnit.MILLISECONDS);
     }
 
+    // 每隔30s,检测一下FilterServer进程的个数，如果小于配置的个数，自动创建一个FilterServer进程
     public void createFilterServer() {
         int more =
             this.brokerController.getBrokerConfig().getFilterServerNums() - this.filterServerTable.size();
+        // 构建shell命令
         String cmd = this.buildStartCommand();
         for (int i = 0; i < more; i++) {
             FilterServerUtil.callShell(cmd, log);
@@ -99,6 +101,7 @@ public class FilterServerManager {
     }
 
     public void registerFilterServer(final Channel channel, final String filterServerAddr) {
+        // 以网络通道为key,获取FilterServerInfo
         FilterServerInfo filterServerInfo = this.filterServerTable.get(channel);
         if (filterServerInfo != null) {
             filterServerInfo.setLastUpdateTimestamp(System.currentTimeMillis());
