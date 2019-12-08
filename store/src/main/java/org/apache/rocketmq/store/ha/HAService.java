@@ -444,6 +444,7 @@ public class HAService {
             int readSizeZeroTimes = 0;
             while (this.byteBufferRead.hasRemaining()) {
                 try {
+                    // 读取数据到ByteBuffer中
                     int readSize = this.socketChannel.read(this.byteBufferRead);
                     if (readSize > 0) {
                         lastWriteTimestamp = HAService.this.defaultMessageStore.getSystemClock().now();
@@ -496,6 +497,7 @@ public class HAService {
                         this.byteBufferRead.position(this.dispatchPostion + msgHeaderSize);
                         this.byteBufferRead.get(bodyData);
 
+                        // 将数据写入到CommitLog中
                         HAService.this.defaultMessageStore.appendToCommitLog(masterPhyOffset, bodyData);
 
                         this.byteBufferRead.position(readSocketPos);
