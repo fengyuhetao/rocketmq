@@ -607,6 +607,8 @@ public class DefaultMessageStore implements MessageStore {
                         status = GetMessageStatus.NO_MATCHED_MESSAGE;
 
                         long nextPhyFileStartOffset = Long.MIN_VALUE;
+
+                        // 此次拉取消息的最大偏移量
                         long maxPhyOffsetPulling = 0;
 
                         int i = 0;
@@ -689,9 +691,12 @@ public class DefaultMessageStore implements MessageStore {
                             brokerStatsManager.recordDiskFallBehindSize(group, topic, queueId, fallBehind);
                         }
 
+
                         nextBeginOffset = offset + (i / ConsumeQueue.CQ_STORE_UNIT_SIZE);
 
+                        // 当前未被拉取到消息消费端的消息长度
                         long diff = maxOffsetPy - maxPhyOffsetPulling;
+                        // 常驻内存的大小
                         long memory = (long) (StoreUtil.TOTAL_PHYSICAL_MEMORY_SIZE
                                 * (this.messageStoreConfig.getAccessMessageInMemoryMaxRatio() / 100.0));
                         getResult.setSuggestPullingFromSlave(diff > memory);
